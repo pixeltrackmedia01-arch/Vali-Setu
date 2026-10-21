@@ -1,0 +1,74 @@
+{
+  "985b0f495115f0b426bddc66": {
+    "file": "ptm-en.mp3",
+    "language": "en",
+    "durationSeconds": 20,
+    "generator": "espeak-ng en-us"
+  },
+  "b49d295f38aa4d664dc75c3d": {
+    "file": "ptm-gu.mp3",
+    "language": "gu",
+    "durationSeconds": 23.8,
+    "generator": "espeak-ng gu"
+  },
+  "92cddc386f54a6cb3675982d": {
+    "file": "ptm-hi.mp3",
+    "language": "hi",
+    "durationSeconds": 21.6,
+    "generator": "espeak-ng hi"
+  },
+  "606f193250cb5564e63b8728": {
+    "file": "scholarship-en.mp3",
+    "language": "en",
+    "durationSeconds": 26.1,
+    "generator": "espeak-ng en-us"
+  },
+  "7b413c17eae203b2698db407": {
+    "file": "scholarship-gu.mp3",
+    "language": "gu",
+    "durationSeconds": 30.2,
+    "generator": "espeak-ng gu"
+  },
+  "45138142bfb9c9e4729356e9": {
+    "file": "scholarship-hi.mp3",
+    "language": "hi",
+    "durationSeconds": 28.3,
+    "generator": "espeak-ng hi"
+  },
+  "e5483488c11d0908b9bd27ac": {
+    "file": "exam-en.mp3",
+    "language": "en",
+    "durationSeconds": 17.7,
+    "generator": "espeak-ng en-us"
+  },
+  "50afe370f7d4e2c00e82b159": {
+    "file": "exam-gu.mp3",
+    "language": "gu",
+    "durationSeconds": 19.9,
+    "generator": "espeak-ng gu"
+  },
+  "fcb1a5ec2fb26117867bde61": {
+    "file": "exam-hi.mp3",
+    "language": "hi",
+    "durationSeconds": 19.8,
+    "generator": "espeak-ng hi"
+  },
+  "c38b6a4c9a47bb8e83aebf4d": {
+    "file": "holiday-en.mp3",
+    "language": "en",
+    "durationSeconds": 15.2,
+    "generator": "espeak-ng en-us"
+  },
+  "d295abbbfe7de6ed56a32ee2": {
+    "file": "holiday-gu.mp3",
+    "language": "gu",
+    "durationSeconds": 15,
+    "generator": "espeak-ng gu"
+  },
+  "bf108aa0d2f0d6126bf72fdb": {
+    "file": "holiday-hi.mp3",
+    "language": "hi",
+    "durationSeconds": 14.1,
+    "generator": "espeak-ng hi"
+  }
+}
