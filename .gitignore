@@ -14,3 +14,4 @@ storage/audio/*
 !storage/audio/.gitkeep
 playwright-report/
 test-results/
+.shot.mjs

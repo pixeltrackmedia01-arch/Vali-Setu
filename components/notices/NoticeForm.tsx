@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { FileUp } from "lucide-react";
 import { Alert, Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
-import { api, ApiError } from "@/lib/api/client";
+import { api, errorText } from "@/lib/api/client";
 import { CHANNELS, LANGUAGES, NOTICE_CATEGORIES, PRIORITIES, type Channel, type Language, type NoticeCategory, type Priority } from "@/lib/domain/constants";
 import { useI18n } from "@/lib/i18n/client";
 import { noticeInputSchema } from "@/lib/validation/schemas";
@@ -145,7 +145,7 @@ export function NoticeForm({
         router.refresh();
       }
     } catch (err) {
-      setMessage({ tone: "danger", text: err instanceof ApiError && err.code !== "INTERNAL" ? t(`errors.codes.${err.code}` as never) || err.message : t("common.error") });
+      setMessage({ tone: "danger", text: errorText(err, t) });
     } finally {
       setSaving(null);
     }

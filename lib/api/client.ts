@@ -38,3 +38,13 @@ export async function api<T = unknown>(path: string, options: { method?: string;
 export function newKey(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
+
+/** Localised text for an API failure; falls back to the server's own safe message. */
+export function errorText(err: unknown, t: (key: never) => string): string {
+  if (!(err instanceof ApiError)) return t("common.error" as never);
+  if (err.code === "NETWORK") return t("common.networkError" as never);
+  if (err.code === "INTERNAL") return t("common.error" as never);
+  const key = `errors.codes.${err.code}`;
+  const text = t(key as never);
+  return text === key ? err.message : text;
+}
