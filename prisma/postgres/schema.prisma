@@ -1,0 +1,480 @@
+// GENERATED from prisma/schema.prisma by scripts/postgres-schema.mjs. Do not edit by hand.
+// Vali Setu data model.
+// SQLite is used for the local demo. Status-like fields are strings validated in
+// lib/domain/constants.ts so the schema migrates to PostgreSQL unchanged.
+// All timestamps are stored in UTC and rendered in Asia/Kolkata.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  /// TEACHER | HEAD_TEACHER | SCHOOL_ADMIN | CRC_OFFICER | BRC_OFFICER | DISTRICT_OFFICIAL | PARENT
+  role         String
+  /// ACTIVE | DISABLED
+  status       String   @default("ACTIVE")
+  /// Teachers only approve notices when this is granted explicitly.
+  canApprove   Boolean  @default(false)
+  /// UI language preference: en | gu | hi
+  locale       String   @default("en")
+  schoolId     String?
+  /// Scope for CRC (cluster) and BRC (block) officers, and district officials.
+  cluster      String?
+  block        String?
+  district     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school          School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  guardian        ParentGuardian?
+  sessions        Session[]
+  assignments     TeacherAssignment[]
+  createdNotices  Notice[]            @relation("NoticeCreator")
+  approvedNotices Notice[]            @relation("NoticeApprover")
+  auditLogs       AuditLog[]
+  followUps       FollowUpTask[]      @relation("FollowUpAssignee")
+
+  @@index([role])
+  @@index([schoolId])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  /// SHA-256 of the cookie token. The raw token never touches the database.
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model School {
+  id                 String   @id @default(cuid())
+  name               String
+  nameGu             String?
+  code               String   @unique
+  district           String
+  block              String
+  cluster            String
+  address            String
+  /// ACTIVE | INACTIVE
+  status             String   @default("ACTIVE")
+  /// Comma separated language codes the school communicates in.
+  supportedLanguages String   @default("gu,hi,en")
+  helpline           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  users      User[]
+  classes    ClassSection[]
+  students   Student[]
+  notices    Notice[]
+  followUps  FollowUpTask[]
+  responses  ParentResponse[]
+
+  @@index([district, block, cluster])
+}
+
+model ClassSection {
+  id           String @id @default(cuid())
+  schoolId     String
+  grade        Int
+  section      String
+  academicYear String
+
+  school      School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students    Student[]
+  assignments TeacherAssignment[]
+  notices     NoticeClass[]
+
+  @@unique([schoolId, grade, section, academicYear])
+}
+
+model TeacherAssignment {
+  userId         String
+  classSectionId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classSection   ClassSection @relation(fields: [classSectionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, classSectionId])
+}
+
+model Student {
+  id             String @id @default(cuid())
+  schoolId       String
+  classSectionId String
+  /// Fictional demo identifier only. Minimal student data by design.
+  displayName    String
+  rollNumber     Int
+  /// ACTIVE | LEFT
+  status         String @default("ACTIVE")
+
+  school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSection ClassSection      @relation(fields: [classSectionId], references: [id], onDelete: Cascade)
+  guardians    StudentGuardian[]
+
+  @@unique([classSectionId, rollNumber])
+  @@index([schoolId])
+}
+
+model ParentGuardian {
+  id                   String    @id @default(cuid())
+  userId               String?   @unique
+  displayName          String
+  /// gu | hi | en
+  preferredLanguage    String    @default("gu")
+  /// whatsapp | sms | voice
+  preferredChannel     String    @default("whatsapp")
+  /// JSON: { urgentOnly: boolean, voice: boolean, quietHours?: string }
+  notificationPrefs    String    @default("{}")
+  /// GRANTED | PENDING | WITHDRAWN
+  consentStatus        String    @default("PENDING")
+  consentUpdatedAt     DateTime?
+  /// Fictional numbers only. Display masked everywhere except the family record.
+  phone                String?
+  phoneVerified        Boolean   @default(false)
+  /// Set when staff or the parent flags the contact as wrong.
+  contactCorrectionNote String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  students   StudentGuardian[]
+  recipients NoticeRecipient[]
+  responses  ParentResponse[]
+  followUps  FollowUpTask[]
+}
+
+model StudentGuardian {
+  studentId    String
+  guardianId   String
+  /// MOTHER | FATHER | GUARDIAN
+  relationship String
+  /// AUTHORIZED | REVOKED
+  authStatus   String @default("AUTHORIZED")
+
+  student  Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian ParentGuardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, guardianId])
+  @@index([guardianId])
+}
+
+model Notice {
+  id              String    @id @default(cuid())
+  schoolId        String
+  creatorId       String
+  title           String
+  /// See NOTICE_CATEGORIES
+  category        String
+  sourceText      String
+  sourceLanguage  String    @default("en")
+  simplifiedText  String?
+  /// simulated | live:<provider> | manual
+  simplifiedBy    String?
+  /// NORMAL | HIGH | URGENT
+  priority        String    @default("NORMAL")
+  /// DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | SCHEDULED | DISPATCHED
+  workflowStatus  String    @default("DRAFT")
+  version         Int       @default(1)
+  /// Comma separated: gu,hi,en
+  targetLanguages String    @default("gu,hi,en")
+  /// Comma separated: whatsapp,sms,voice
+  channels        String    @default("whatsapp,sms")
+  /// CLASS | SELECTED
+  recipientMode   String    @default("CLASS")
+  /// JSON array of guardian ids when recipientMode = SELECTED
+  selectedGuardianIds String @default("[]")
+  scheduledAt     DateTime?
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  dispatchedAt    DateTime?
+  /// Stored circular upload (protected path under storage/uploads)
+  attachmentPath  String?
+  attachmentMime  String?
+  attachmentName  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  creator      User                @relation("NoticeCreator", fields: [creatorId], references: [id])
+  approvedBy   User?               @relation("NoticeApprover", fields: [approvedById], references: [id])
+  classes      NoticeClass[]
+  versions     NoticeVersion[]
+  translations NoticeTranslation[]
+  validations  NoticeValidation[]
+  audio        NoticeAudio[]
+  recipients   NoticeRecipient[]
+  responses    ParentResponse[]
+  followUps    FollowUpTask[]
+  dispatches   DispatchRequest[]
+
+  @@index([schoolId, workflowStatus])
+  @@index([schoolId, createdAt])
+  @@index([category])
+}
+
+model NoticeClass {
+  noticeId       String
+  classSectionId String
+  notice         Notice       @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  classSection   ClassSection @relation(fields: [classSectionId], references: [id], onDelete: Cascade)
+
+  @@id([noticeId, classSectionId])
+}
+
+/// Immutable snapshot of the source each time it changes.
+model NoticeVersion {
+  id             String   @id @default(cuid())
+  noticeId       String
+  version        Int
+  title          String
+  sourceText     String
+  simplifiedText String?
+  createdById    String
+  createdAt      DateTime @default(now())
+  notice         Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeId, version])
+}
+
+model NoticeTranslation {
+  id               String   @id @default(cuid())
+  noticeId         String
+  language         String
+  /// Text currently proposed for dispatch (edited text when edited, else generated).
+  translatedText   String
+  /// Last provider output, kept so "reset to generated" is possible.
+  generatedText    String?
+  editedText       String?
+  provider         String
+  model            String?
+  /// PENDING | PASSED | ISSUES | REVIEWED
+  validationStatus String   @default("PENDING")
+  /// REJECTED when a reviewer rejects this language version.
+  reviewState      String   @default("OPEN")
+  version          Int      @default(1)
+  /// Notice.version the translation was produced from. Stale when lower.
+  sourceVersion    Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  notice      Notice                @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  revisions   TranslationRevision[]
+  validations NoticeValidation[]
+  audio       NoticeAudio[]
+
+  @@unique([noticeId, language])
+}
+
+model TranslationRevision {
+  id            String   @id @default(cuid())
+  translationId String
+  version       Int
+  text          String
+  /// generated | edited | reset
+  origin        String
+  provider      String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  translation   NoticeTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  @@unique([translationId, version])
+}
+
+model NoticeValidation {
+  id              String    @id @default(cuid())
+  noticeId        String
+  /// null for checks against the simplified text
+  translationId   String?
+  /// simplified | gu | hi | en
+  target          String
+  /// date | time | amount | percentage | phone | identifier | class | document | location | deadline | action
+  fieldType       String
+  sourceValue     String
+  normalizedValue String?
+  translatedValue String?
+  /// MATCHED | MISMATCH | MISSING | ADDITIONAL | NEEDS_REVIEW | UNVERIFIABLE
+  status          String
+  critical        Boolean   @default(true)
+  /// OPEN | REVIEWED | OVERRIDDEN
+  resolution      String    @default("OPEN")
+  reviewNote      String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  /// Notice.version and translation version the check ran against.
+  noticeVersion   Int
+  translationVersion Int?
+  createdAt       DateTime  @default(now())
+
+  notice      Notice             @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  translation NoticeTranslation? @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  @@index([noticeId, target])
+}
+
+model NoticeAudio {
+  id              String    @id @default(cuid())
+  noticeId        String
+  translationId   String
+  language        String
+  provider        String
+  voice           String?
+  /// Storage key under storage/; served only through /api/audio/[id] after an access check.
+  audioReference  String?
+  mimeType        String?
+  durationSeconds Float?
+  /// READY | SIMULATED | STALE | FAILED
+  status          String
+  /// Translation version the audio was generated from.
+  textVersion     Int
+  spokenText      String
+  errorMessage    String?
+  generatedAt     DateTime  @default(now())
+
+  notice      Notice            @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  translation NoticeTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  @@unique([translationId])
+}
+
+model DispatchRequest {
+  id             String   @id @default(cuid())
+  /// One dispatch per notice; a second request returns the first summary.
+  noticeId       String   @unique
+  idempotencyKey String   @unique
+  requestedById  String
+  /// demo | live
+  mode           String
+  totalRecipients Int
+  queued         Int
+  delivered      Int
+  failed         Int
+  summaryJson    String   @default("{}")
+  createdAt      DateTime @default(now())
+  notice         Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+}
+
+model NoticeRecipient {
+  id             String    @id @default(cuid())
+  noticeId       String
+  guardianId     String
+  channel        String
+  language       String
+  /// QUEUED | SENT | DELIVERED | FAILED | SKIPPED
+  deliveryStatus String    @default("QUEUED")
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  audioPlayedAt  DateTime?
+  acknowledgedAt DateTime?
+  lastAttemptAt  DateTime?
+  failureReason  String?
+  /// true when produced by the demo provider
+  simulated      Boolean   @default(true)
+
+  notice   Notice                   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  guardian ParentGuardian           @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  attempts MessageDeliveryAttempt[]
+
+  @@unique([noticeId, guardianId, channel])
+  @@index([guardianId])
+  @@index([noticeId, deliveryStatus])
+}
+
+model MessageDeliveryAttempt {
+  id                String   @id @default(cuid())
+  recipientId       String
+  provider          String
+  providerMessageId String?
+  attemptNumber     Int
+  /// ACCEPTED | SENT | DELIVERED | FAILED
+  status            String
+  errorCode         String?
+  createdAt         DateTime @default(now())
+  recipient         NoticeRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([recipientId, attemptNumber])
+  @@index([providerMessageId])
+}
+
+model ParentResponse {
+  id               String   @id @default(cuid())
+  noticeId         String
+  guardianId       String
+  schoolId         String
+  /// ACKNOWLEDGED | QUESTION
+  responseType     String
+  questionCategory String?
+  message          String?
+  callbackRequested Boolean @default(false)
+  /// OPEN | ANSWERED | CLOSED (questions); RECORDED (acknowledgments)
+  status           String
+  /// Client generated key so double taps do not duplicate.
+  clientKey        String?
+  staffReply       String?
+  createdAt        DateTime @default(now())
+
+  notice   Notice         @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  guardian ParentGuardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  school   School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, clientKey])
+  @@index([schoolId, responseType, status])
+  @@index([noticeId])
+}
+
+model FollowUpTask {
+  id           String    @id @default(cuid())
+  schoolId     String
+  noticeId     String?
+  guardianId   String?
+  assignedToId String?
+  reason       String
+  /// OPEN | DONE
+  status       String    @default("OPEN")
+  dueAt        DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  school     School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  notice     Notice?         @relation(fields: [noticeId], references: [id], onDelete: SetNull)
+  guardian   ParentGuardian? @relation(fields: [guardianId], references: [id], onDelete: SetNull)
+  assignedTo User?           @relation("FollowUpAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  entityType String
+  entityId   String
+  action     String
+  /// JSON; never contains full message bodies or phone numbers.
+  metadata   String   @default("{}")
+  timestamp  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([timestamp])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+}

@@ -13,6 +13,11 @@ const schema = z.object({
     .string()
     .optional()
     .transform((v) => v === "true"),
+  /** Hosted public demo: allows the demo sign-in helpers in a production build. Requires APP_MODE=demo. */
+  PUBLIC_DEMO: z
+    .string()
+    .optional()
+    .transform((v) => v === "true"),
   AI_PROVIDER: z.enum(["demo", "anthropic"]).default("demo"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5-5"),

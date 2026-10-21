@@ -14,12 +14,17 @@ export const DEMO_ACCOUNTS: { email: string; role: Role; name: string }[] = [
   { email: "parent.hi@valisetu.example", role: "PARENT", name: "Sunita Yadav" },
 ];
 
-export function demoSwitcherEnabled(): boolean {
+/** Demo sign-in helpers are off in production builds unless this is an explicitly hosted public demo. */
+function demoHelpersAllowed(): boolean {
   const e = env();
-  return e.NODE_ENV !== "production" && e.APP_MODE === "demo" && Boolean(e.ENABLE_DEMO_ROLE_SWITCHER);
+  return e.APP_MODE === "demo" && (e.NODE_ENV !== "production" || e.PUBLIC_DEMO);
 }
 
-/** The demo password is only shown outside production. */
+export function demoSwitcherEnabled(): boolean {
+  return demoHelpersAllowed() && Boolean(env().ENABLE_DEMO_ROLE_SWITCHER);
+}
+
+/** The demo password is only shown outside production, or on a hosted public demo. */
 export function demoPassword(): string | null {
-  return env().NODE_ENV !== "production" && env().APP_MODE === "demo" ? process.env.SEED_DEMO_PASSWORD || "ValiSetu@2026" : null;
+  return demoHelpersAllowed() ? process.env.SEED_DEMO_PASSWORD || "ValiSetu@2026" : null;
 }

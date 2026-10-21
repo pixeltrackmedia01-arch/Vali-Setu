@@ -70,7 +70,8 @@ All configuration lives in `.env` (see `.env.example`, which contains placeholde
 | `DATABASE_URL` | `file:./dev.db` | SQLite file (relative to `prisma/`) or a PostgreSQL URL |
 | `APP_MODE` | `demo` | `demo` uses simulated providers; `live` allows real adapters |
 | `SESSION_TTL_HOURS` | `8` | Session lifetime |
-| `ENABLE_DEMO_ROLE_SWITCHER` | `true` | Quick role switcher on the login page; always off when `NODE_ENV=production` |
+| `ENABLE_DEMO_ROLE_SWITCHER` | `true` | Quick role switcher on the login page; off when `NODE_ENV=production` unless `PUBLIC_DEMO=true` |
+| `PUBLIC_DEMO` | `false` | Hosted public demo only: shows the demo password and switcher in a production build (needs `APP_MODE=demo`) |
 | `SEED_DEMO_PASSWORD` | `ValiSetu@2026` | Password for every seeded demo account |
 | `AI_PROVIDER` | `demo` | `demo` or `anthropic` |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `AI_TIMEOUT_MS` | | Anthropic configuration |
@@ -81,13 +82,15 @@ All configuration lives in `.env` (see `.env.example`, which contains placeholde
 | `LIVE_DISPATCH_ENABLED` | `false` | Second switch required before any real send |
 | `WHATSAPP_*`, `SMS_*`, `VOICE_*` | | Gateway credentials (see sections 18–19) |
 | `WEBHOOK_SECRET` | | HMAC secret for delivery-status callbacks |
-| `UPLOAD_MAX_BYTES`, `STORAGE_DIR`, `DATA_RETENTION_DAYS` | 5 MB, `storage`, 365 | Files and retention |
+| `UPLOAD_MAX_BYTES`, `STORAGE_DIR`, `DATA_RETENTION_DAYS` | 5 MB, `storage`, 365 | Files and retention. The bundled `storage/demo-audio/` recordings are always read from the app itself |
 
 ## 7. Database setup
 
 The demo uses SQLite; nothing to install. The database file is created at `prisma/dev.db` and is git-ignored.
 
-To use PostgreSQL, change `provider = "sqlite"` to `provider = "postgresql"` in `prisma/schema.prisma`, set `DATABASE_URL`, and create a fresh migration (`npx prisma migrate dev --name init`). Status fields are strings validated in code, so no enum changes are needed.
+For PostgreSQL there is a generated copy of the schema with the `postgresql` provider in `prisma/postgres/` (regenerate it with `node scripts/postgres-schema.mjs` after changing `prisma/schema.prisma`, and add a migration there with `prisma migrate diff`). Status fields are strings validated in code, so no enum changes are needed.
+
+With `DATABASE_URL` pointing at PostgreSQL (for example `postgresql://user:password@host:5432/db?schema=valisetu`), `npm run build:postgres` generates the client, applies the PostgreSQL migrations, seeds the demo data only if the database has no users, and builds the app. This is the build used for the hosted demo.
 
 ## 8. Database migrations
 

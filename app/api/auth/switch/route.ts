@@ -9,7 +9,8 @@ import { audit } from "@/lib/audit";
 import { AppError } from "@/services/errors";
 
 /**
- * Demo-only quick sign-in for presentations. Disabled when NODE_ENV=production.
+ * Demo-only quick sign-in for presentations. Disabled when NODE_ENV=production,
+ * unless PUBLIC_DEMO=true for a hosted demo.
  * It signs in as a seeded demo account; every request afterwards goes through
  * the normal authorization checks for that account.
  */
