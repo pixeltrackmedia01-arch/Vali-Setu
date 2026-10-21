@@ -22,7 +22,7 @@ import {
 } from "../services/notices";
 import { dispatchNotice } from "../services/notices/dispatch";
 
-const db = new PrismaClient();
+const db = new PrismaClient({ transactionOptions: { maxWait: 10_000, timeout: 30_000 } });
 const PASSWORD = process.env.SEED_DEMO_PASSWORD || "ValiSetu@2026";
 const NOW = new Date("2026-10-21T10:00:00Z");
 const DAY = 24 * 3600 * 1000;
