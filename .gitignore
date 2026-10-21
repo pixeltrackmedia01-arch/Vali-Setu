@@ -15,3 +15,5 @@ storage/audio/*
 playwright-report/
 test-results/
 .shot.mjs
+*.db
+*.db-journal
