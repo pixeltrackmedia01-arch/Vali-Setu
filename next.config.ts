@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  // Shared hosting caps processes and threads; NEXT_BUILD_CPUS=1 builds with a single worker.
+  ...(process.env.NEXT_BUILD_CPUS ? { experimental: { cpus: Number(process.env.NEXT_BUILD_CPUS) } } : {}),
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
